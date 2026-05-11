@@ -23,8 +23,7 @@ jobs:
         uses: seanmiddleditch/gha-setup-ninja@v5
       - name: Configure
         shell: bash
-        run: cmake -S . -B build -G Ninja -DCMAKE_CXX_COMPILER=${{ matrix.compiler }}
+        run: cmake -S . -B build -G Ninja -DCMAKE_CXX_COMPILER=${{ matrix.compiler }} -DLEONMUSIC_ENABLE_TAGLIB=OFF
       - name: Build
         shell: bash
         run: cmake --build build --config Release
-
