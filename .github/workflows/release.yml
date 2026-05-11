@@ -48,9 +48,18 @@ jobs:
         shell: bash
         run: |
           mkdir -p release
-          cp build/lma* release/ 2>/dev/null || true
-          cp build/leonmusic* release/ 2>/dev/null || true
-          find build -maxdepth 1 \( -name "*.zip" -o -name "*.tar.gz" -o -name "*.deb" \) -exec cp {} release/ \;
+          if [ "${{ runner.os }}" = "Windows" ]; then
+            cp build/lma.exe "release/lma-windows-x64.exe"
+            cp build/leonmusic.dll "release/leonmusic-windows-x64.dll"
+            cp build/leonmusic.lib "release/leonmusic-windows-x64.lib"
+          elif [ "${{ runner.os }}" = "macOS" ]; then
+            cp build/lma "release/lma-macos-arm64"
+            cp build/libleonmusic.dylib "release/libleonmusic-macos-arm64.dylib"
+          else
+            cp build/lma "release/lma-linux-x64"
+            cp build/libleonmusic.so "release/libleonmusic-linux-x64.so"
+          fi
+          find . -maxdepth 2 \( -name "*.zip" -o -name "*.tar.gz" -o -name "*.deb" \) -exec cp {} release/ \;
 
       - name: Render Arch package recipe
         if: runner.os == 'Linux'
