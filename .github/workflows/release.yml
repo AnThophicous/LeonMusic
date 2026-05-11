@@ -1,0 +1,91 @@
+name: release
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            compiler: clang++
+            artifact_name: LeonMusic-windows-x64
+          - os: ubuntu-latest
+            compiler: clang++
+            artifact_name: LeonMusic-linux-x64
+          - os: macos-latest
+            compiler: clang++
+            artifact_name: LeonMusic-macos-x64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Ninja
+        uses: seanmiddleditch/gha-setup-ninja@v5
+
+      - name: Install Linux packaging deps
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y dpkg-dev
+
+      - name: Configure
+        shell: bash
+        run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=${{ matrix.compiler }}
+
+      - name: Build
+        shell: bash
+        run: cmake --build build --config Release
+
+      - name: Package
+        shell: bash
+        run: cpack --config build/CPackConfig.cmake
+
+      - name: Stage archive files
+        shell: bash
+        run: |
+          mkdir -p release
+          cp build/lma* release/ 2>/dev/null || true
+          cp build/leonmusic* release/ 2>/dev/null || true
+          find build -maxdepth 1 \( -name "*.zip" -o -name "*.tar.gz" -o -name "*.deb" \) -exec cp {} release/ \;
+
+      - name: Render Arch package recipe
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          if [ -z "$VERSION" ] || [ "$VERSION" = "$GITHUB_REF_NAME" ]; then VERSION="0.1.0"; fi
+          sed -e "s/@PROJECT_VERSION@/${VERSION}/g" -e "s#@GITHUB_REPOSITORY@#${GITHUB_REPOSITORY}#g" packaging/linux/PKGBUILD.in > release/PKGBUILD
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact_name }}
+          path: release/
+
+  publish-release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release-assets
+
+      - name: Flatten assets
+        shell: bash
+        run: |
+          mkdir -p flattened
+          find release-assets -type f -exec cp {} flattened/ \;
+
+      - name: Publish GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: flattened/*
+          generate_release_notes: true

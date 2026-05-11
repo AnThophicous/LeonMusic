@@ -1,0 +1,15 @@
+pkgname=leonmusic-bin
+pkgver=@PROJECT_VERSION@
+pkgrel=1
+pkgdesc="Cross-platform shared library and CLI for LeonMusic"
+arch=('x86_64')
+url="https://github.com/@GITHUB_REPOSITORY@"
+license=('custom')
+depends=('ffmpeg' 'yt-dlp')
+source=("LeonMusic-@PROJECT_VERSION@-Linux-x86_64.tar.gz")
+sha256sums=('SKIP')
+
+package() {
+  install -d "${pkgdir}/usr"
+  cp -r "${srcdir}/LeonMusic-@PROJECT_VERSION@-Linux-x86_64/"* "${pkgdir}/usr/"
+}
